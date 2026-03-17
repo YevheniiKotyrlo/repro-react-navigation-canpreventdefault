@@ -1,0 +1,31 @@
+name: Reproduce TS2344
+
+on: [push, workflow_dispatch]
+
+jobs:
+  repro:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: "check: 23 TS2344 errors expected (current state)"
+        run: |
+          echo "Running tsc on repro.ts (events with 'unknown' — current expo-router emission)..."
+          npm run check 2>&1 | tee /tmp/check-output.txt || true
+          ERROR_COUNT=$(grep -c "TS2344" /tmp/check-output.txt || echo 0)
+          echo ""
+          echo "=== Result: $ERROR_COUNT TS2344 errors ==="
+          [ "$ERROR_COUNT" -eq 23 ] && echo "EXPECTED: 23 errors — matches." || echo "UNEXPECTED: expected 23 errors, got $ERROR_COUNT"
+
+      - name: "check:fixed: 0 errors expected (after PR)"
+        run: |
+          echo "Running tsc on repro-fixed.ts (events with 'undefined' — after the fix)..."
+          npm run check:fixed 2>&1 | tee /tmp/check-fixed-output.txt
+          echo ""
+          echo "=== Result: 0 errors — fix confirmed. ==="
